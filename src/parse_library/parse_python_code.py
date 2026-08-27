@@ -1,10 +1,11 @@
 """Turn Python source files into code records via static AST analysis.
 
-Reads .py files from a directory (whatever put them there - see
-fetch_official_example_code.py) and never touches the network. Each
-top-level function/class becomes one record, the retrieval-sized unit,
-plus one module-context record per file holding the imports,
-module-level constants, and __main__ glue.
+Reads .py files from every directory under src/ (whatever put them there
+- see fetch_official_example_code.py), plus any .py files dropped
+directly in src/ itself without a subdirectory around them, and never
+touches the network. Each top-level function/class becomes one record,
+the retrieval-sized unit, plus one module-context record per file holding
+the imports, module-level constants, and __main__ glue.
 
 Every record carries the target library's APIs it references, resolved
 statically against the API records parse_api.py produced: references that
@@ -178,7 +179,7 @@ def load_manifest(source_dir):
     return json.loads(manifest_path.read_text(encoding="utf-8"))
 
 
-def parse_source_dir(source_dir, module_name, known_names, name_prefix):
+def parse_source_dir(source_dir, module_name, known_names, name_prefix, recursive=True):
     manifest = load_manifest(source_dir)
     urls = manifest.get("files", {})
     # One licence for the whole directory when every file came from the
@@ -186,9 +187,13 @@ def parse_source_dir(source_dir, module_name, known_names, name_prefix):
     licenses, shared_license = manifest.get("licenses", {}), manifest.get("license")
 
     records = []
-    # Recursive: sources drawn from several repositories are nested under a
-    # directory per repository, because basenames collide across projects.
-    for path in sorted(source_dir.rglob("*.py")):
+    # Recursive by default: sources drawn from several repositories are
+    # nested under a directory per repository, because basenames collide
+    # across projects. src/ itself passes recursive=False - it already
+    # recurses into every subdirectory as that subdirectory's own source,
+    # so reading it recursively here too would parse every file twice.
+    finder = source_dir.rglob if recursive else source_dir.glob
+    for path in sorted(finder("*.py")):
         key = str(path.relative_to(source_dir))
         provenance = {"url": urls.get(key), "license": licenses.get(key, shared_license)}
         file_records = build_file_records(
@@ -212,7 +217,9 @@ def main():
     for source in sources:
         source_dir = source["src_dir"]
         print(f"{source_dir.name}:")
-        records = parse_source_dir(source_dir, parsed_module_name, known_names, source["name_prefix"])
+        records = parse_source_dir(
+            source_dir, parsed_module_name, known_names, source["name_prefix"], source.get("recursive", True)
+        )
         write_jsonl(records, source["jsonl"])
         unknown_count = sum(1 for r in records if r.get("unknown_refs"))
         print(f"Wrote {len(records)} records to {source['jsonl']}")

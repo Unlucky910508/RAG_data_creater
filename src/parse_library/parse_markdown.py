@@ -1,9 +1,10 @@
 """Turn the Markdown documentation under src/ into records, one per section.
 
-Reads every .md file beneath each directory in src/ and writes one records
-file per directory into raw_text/, named <directory>_docs.jsonl - so
-documentation you gathered yourself only has to be dropped in a directory
-there, exactly like example code.
+Reads every .md file beneath each directory in src/, plus any .md files
+dropped directly in src/ itself, and writes one records file per source
+into raw_text/, named <directory>_docs.jsonl (src_docs.jsonl for the
+loose ones) - so documentation you gathered yourself only has to be
+dropped under src/, in a directory or not, exactly like example code.
 
 **A section is one record.** A heading, and the text between it and the
 next heading of any level. Which means a heading with subsections keeps
@@ -185,9 +186,10 @@ def parse_markdown_file(path, name_prefix, relative_name):
     return records
 
 
-def parse_source_dir(source_dir, name_prefix):
+def parse_source_dir(source_dir, name_prefix, recursive=True):
     records = []
-    for path in sorted(source_dir.rglob("*.md")):
+    finder = source_dir.rglob if recursive else source_dir.glob
+    for path in sorted(finder("*.md")):
         relative_name = path.relative_to(source_dir).as_posix()
         file_records = parse_markdown_file(path, name_prefix, relative_name)
         records.extend(file_records)
@@ -205,10 +207,12 @@ def main():
     total = 0
     for source in sources:
         source_dir = source["src_dir"]
-        if not any(source_dir.rglob("*.md")):
+        recursive = source.get("recursive", True)
+        finder = source_dir.rglob if recursive else source_dir.glob
+        if not any(finder("*.md")):
             continue
         print(f"{source_dir.name}:")
-        records = parse_source_dir(source_dir, source["name_prefix"])
+        records = parse_source_dir(source_dir, source["name_prefix"], recursive)
         write_jsonl(records, source["docs_jsonl"])
         print(f"Wrote {len(records)} records to {source['docs_jsonl']}")
         total += len(records)

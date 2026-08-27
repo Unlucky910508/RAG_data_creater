@@ -16,11 +16,13 @@ data/pycolmap_4.1.0/
     official/             from fetch_official_example_code.py
     community/            from fetch_community_code.py
     <yours>/              anything you put there
+    (loose files)         dropped directly in src/, no folder needed
   raw_text/               records, one jsonl per source per kind
     api.jsonl             one record per API
     official.jsonl        official example code, per function
     community.jsonl       third-party code, per function
     official_docs.jsonl   documentation, per section
+    src.jsonl / src_docs.jsonl   from the loose files above, if any
   chunked_text/           the same, split into embedding chunks
     api_chunks.jsonl
     official_chunks.jsonl
@@ -34,7 +36,12 @@ data/pycolmap_4.1.0/
 at a list.** A directory you create under `src/` is parsed, named after
 itself, and carried through chunking and indexing without being
 registered anywhere — so code you gathered some other way only has to be
-put in the right place.
+put in the right place. A file doesn't need a folder built around it
+either: anything dropped directly in `src/` itself (not one level down)
+is picked up too, named-prefixed `src/…` and written to `src.jsonl` /
+`src_docs.jsonl` — a subdirectory is only needed to keep files from a
+distinct source (a repo, a fetch) grouped and namespaced apart from
+everything else.
 
 ## 1. Point config at a library
 
@@ -191,11 +198,15 @@ resolution.
 python src/parse_library/parse_python_code.py
 ```
 Reads `.py` files (never the network) from **every directory under
-`src/`** — the official examples above, community code if fetched, and
-anything you put there yourself. Each directory becomes one
-`raw_text/<name>.jsonl` and lends its name as the prefix on those records
-(`official/…`, `community/…`), so a hit says where the code came from and
-no source can overwrite another. Each file splits into per-function/class
+`src/`**, plus any dropped directly in `src/` itself — the official
+examples above, community code if fetched, and anything you put there
+yourself, foldered or not. Each source becomes one `raw_text/<name>.jsonl`
+and lends its name as the prefix on those records (`official/…`,
+`community/…`, `src/…` for the loose ones), so a hit says where the code
+came from and no source can overwrite another. Loose files are read
+non-recursively — every subdirectory is already its own source, read
+recursively, so reading `src/` recursively too would parse them twice.
+Each file splits into per-function/class
 records plus a module-context record. Every reference to
 the target library is statically resolved via `ast` against the API
 records into `apis_used`; unresolvable ones land in `unknown_refs` (zero
@@ -217,7 +228,8 @@ lower bound. Python only — other languages would need a sibling
 ```bash
 python src/parse_library/parse_markdown.py
 ```
-Reads `.md` files from the same directories, writing
+Reads `.md` files from the same sources — every directory under `src/`
+plus anything loose directly in `src/` itself — writing
 `raw_text/<name>_docs.jsonl` — a separate file from the code records
 because one directory can hold both, and each step rewrites its own file
 whole. For a library whose usable surface is a command-line tool rather

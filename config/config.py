@@ -189,8 +189,18 @@ def api_jsonl_path():
 
 def code_sources():
     """Every directory under src/, each becoming one records file named
-    after it. The directory name is also the prefix its records carry, so
-    a hit says where the code came from.
+    after it, plus src/ itself for files dropped there directly rather
+    than under a subdirectory - so a file doesn't need a folder built
+    around it just to be picked up. The directory name (or "src" for
+    that last one) is also the prefix its records carry, so a hit says
+    where the code came from.
+
+    Subdirectories are read recursively (community/ nests one directory
+    per repository), but src/ itself is only read one level deep - it
+    already recurses into every subdirectory as its own source, so
+    reading it recursively too would parse every file under src/ twice.
+    A subdirectory literally named "src" would collide with this jsonl
+    name; nothing stops that, it just is not worth guarding against.
 
     Code and documentation from the same directory are kept in separate
     files - parse_python_code.py writes "jsonl", parse_markdown.py writes
@@ -200,16 +210,25 @@ def code_sources():
     root = src_dir()
     if not root.exists():
         return []
-    return [
+    sources = [
         {
             "src_dir": directory,
             "jsonl": raw_text_dir() / f"{directory.name}.jsonl",
             "docs_jsonl": raw_text_dir() / f"{directory.name}_docs.jsonl",
             "name_prefix": directory.name,
+            "recursive": True,
         }
         for directory in sorted(root.iterdir())
         if directory.is_dir()
     ]
+    sources.append({
+        "src_dir": root,
+        "jsonl": raw_text_dir() / f"{root.name}.jsonl",
+        "docs_jsonl": raw_text_dir() / f"{root.name}_docs.jsonl",
+        "name_prefix": root.name,
+        "recursive": False,
+    })
+    return sources
 
 
 def record_jsonl_paths():
