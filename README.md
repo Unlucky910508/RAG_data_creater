@@ -155,9 +155,12 @@ fields. Only `parse_api.py` rebuilds the file from scratch.
 ```bash
 python src/parse_library/fetch_official_example_code.py
 ```
-Downloads the official example scripts at the tag matching the installed
-library version — never master, so example code can't drift ahead of the
-API records. Writes the `.py` files to `src/official/` plus a
+Downloads the official example scripts at the tag matching
+`parsed_module_version` in `config/config.py` — never master, so example
+code can't drift ahead of the API records. Doesn't need the target
+library installed: like every step but `parse_api.py` and
+`parse_signatures.py`, it only needs the version string. Writes the `.py`
+files to `src/official/` plus a
 `_manifest.json` recording
 each file's upstream URL, ref, and license. Everything in the directory
 is taken except `conftest.py`, which is pytest wiring; tests are kept,
@@ -319,7 +322,9 @@ python src/rag_ingest/parse_chunks.py
 Splits each record (from **every jsonl in `raw_text/`**) into one or more
 embedding chunks — currently an `explanation` chunk (name + official
 docstring text + generated explanation), a `signature` chunk (name +
-signatures + parameter names), an `example` chunk (name + APIs used +
+signatures + parameter names), an `example_workflow` chunk (name + APIs
+used, no code — matches on which APIs a snippet composes without the code
+itself crowding the vector), an `example` chunk (name + APIs used +
 code), and a `doc_section` chunk (name + heading path + documentation
 prose) — so conceptual, precise/parameter-level, and how-do-I-use-it
 queries can each match a chunk suited to that style. Each record file gets
@@ -413,6 +418,30 @@ instead of silently staying stale. Same retry/incremental-flush design as
 
 ### Phase 3 — serving queries (`src/rag_query/`)
 
+This directory is meant to be handed off on its own — to a machine that
+only answers queries and never builds anything, or to someone who isn't
+running the rest of the pipeline. It reads nothing from `config/` and
+imports nothing from the rest of the tree; every setting it needs is
+plain values in `mcp_server_config.py`, and `CHROMA_PATH` there resolves
+relative to that file's own location rather than the working directory,
+so a copied folder finds its store wherever it's copied to and run from.
+Copy `chroma/` in alongside it (or edit `CHROMA_PATH` to point elsewhere)
+and it has everything serving needs.
+
+It also has its own `requirements.txt` — `mcp` and `pydantic` on top of
+`requests`/`chromadb`, needed only for `mcp_server.py` and not installed
+by the top-level `requirements.txt` in step 2:
+
+```bash
+pip install -r src/rag_query/requirements.txt
+```
+
+`kilo_example.jsonc` at the repo root is a working [Kilo
+Code](https://kilo.ai) MCP config example for `mcp_server.py` — copy its
+`mcp` block into `kilo.jsonc`/`.kilo/kilo.jsonc` (project) or
+`~/.config/kilo/kilo.jsonc` (global) and fill in the interpreter and
+script paths.
+
 - `search.py`: the actual RAG search logic (embed a query via the
   configured embeddings endpoint, query the Chroma collection, dedupe the
   several chunks of one record down to a single hit, keeping its nearest).
@@ -459,10 +488,10 @@ regenerates exactly those.
 
 ```bash
 # preview first - writes nothing
-python src/parse_library/invalidate_explanations.py data/pycolmap_4.1.0_api.jsonl --when-field doc --dry-run
+python src/parse_library/invalidate_explanations.py data/pycolmap_4.1.0/raw_text/api.jsonl --when-field doc --dry-run
 
 # clear, then regenerate
-python src/parse_library/invalidate_explanations.py data/pycolmap_4.1.0_api.jsonl --when-field doc
+python src/parse_library/invalidate_explanations.py data/pycolmap_4.1.0/raw_text/api.jsonl --when-field doc
 python src/parse_library/parse_explanations.py
 ```
 

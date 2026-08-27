@@ -15,13 +15,13 @@ reset. parse_explanations.py skips records that already have an
 explanation, so it then regenerates exactly the cleared ones.
 
     # after parse_signatures.py started emitting a "doc" field
-    invalidate_explanations.py data/pycolmap_4.1.0_api.jsonl --when-field doc
+    invalidate_explanations.py data/pycolmap_4.1.0/raw_text/api.jsonl --when-field doc
 
     # see what would happen first
-    invalidate_explanations.py data/pycolmap_4.1.0_api.jsonl --when-field doc --dry-run
+    invalidate_explanations.py data/pycolmap_4.1.0/raw_text/api.jsonl --when-field doc --dry-run
 
     # after a prompt change, where every record's output is stale
-    invalidate_explanations.py data/pycolmap_4.1.0_api.jsonl --all
+    invalidate_explanations.py data/pycolmap_4.1.0/raw_text/api.jsonl --all
 """
 
 import argparse
