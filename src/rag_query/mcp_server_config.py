@@ -10,12 +10,16 @@ a store off disk and never introspects anything, so the version is part
 of the path below rather than something looked up at runtime.
 """
 
+from pathlib import Path
+
 # --- The dataset ------------------------------------------------------
 # The Chroma store from load_vectordb.py, which holds the answers as well
 # as the vectors - so this is the only thing that travels with this
-# folder. Copy it alongside, or point at wherever it lives; absolute
-# paths are fine, relative ones are read from this directory.
-CHROMA_PATH = "../../data/pycolmap_4.1.0/chroma"
+# folder. Resolved from this file's own location rather than the current
+# working directory, so it still finds chroma/ wherever this whole
+# rag_query/ folder gets copied to and run from - copy chroma/ in here
+# alongside it.
+CHROMA_PATH = str(Path(__file__).resolve().parent / "chroma")
 # The collection inside that store, not the store itself: one store can
 # hold several. A name that is not there is an error rather than a new
 # empty collection - see get_collection in search.py.
