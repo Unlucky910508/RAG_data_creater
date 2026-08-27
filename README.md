@@ -392,8 +392,8 @@ the limit is kept whole rather than cut mid-line.
 python src/rag_ingest/load_vectordb.py
 ```
 Reads every chunk file from `chunk_jsonl_paths()` in `config/config.py`
-(the row format contract is just `{record_id, chunk_type, text}` per
-line), calls a local OpenAI-compatible embeddings endpoint
+(the row format contract is just `{record_id, chunk_type, embedded_text}`
+per line), calls a local OpenAI-compatible embeddings endpoint
 (`EMBEDDING_BASE_URL`/`EMBEDDING_MODEL` in `config/config.py`, defaults
 to the same server as `LLM_BASE_URL` with
 model `BAAI/bge-m3`) per chunk and loads the resulting

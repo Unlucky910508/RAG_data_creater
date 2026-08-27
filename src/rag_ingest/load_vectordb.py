@@ -62,7 +62,7 @@ def text_hash(chunk):
     chunk even though what it is embedded on has not moved. Hashing only
     the embedded text would leave the stored answer stale - the more
     confusing failure, since retrieval would still look right."""
-    payload = chunk["text"] + "\x00" + chunk.get("return_text", "")
+    payload = chunk["embedded_text"] + "\x00" + chunk.get("return_text", "")
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -85,7 +85,7 @@ def call_embedding(text, api_key):
 def call_embedding_with_retry(chunk, api_key):
     for attempt in range(MAX_RETRIES):
         try:
-            return call_embedding(chunk["text"], api_key)
+            return call_embedding(chunk["embedded_text"], api_key)
         except Exception as e:
             if attempt == MAX_RETRIES - 1:
                 print(f"  FAILED {chunk['record_id']} ({chunk['chunk_type']}): {e}")
@@ -128,7 +128,7 @@ def load_chunks(collection, chunks, api_key):
             batch_embeddings.append(embedding)
             # The document is what a hit is answered with, not what it was
             # found by: the store then holds everything a search needs.
-            batch_documents.append(chunk.get("return_text") or chunk["text"])
+            batch_documents.append(chunk.get("return_text") or chunk["embedded_text"])
             batch_metadatas.append({
                 "record_id": chunk["record_id"],
                 "chunk_type": chunk["chunk_type"],

@@ -4,9 +4,9 @@ Each record gets indexed under multiple text representations (its
 explanation, its signature) so a conceptual query ("how do I set the
 camera model") and a precise one ("does this take a min_num_trials
 argument") can each match a chunk suited to that query style. Chunks only
-carry record_id + chunk_type + text - the full record already lives in the
-API jsonl and is looked up by record_id after a chunk matches, so nothing
-is duplicated here.
+carry record_id + chunk_type + embedded_text - the full record already
+lives in the API jsonl and is looked up by record_id after a chunk
+matches, so nothing is duplicated here.
 
 Which fields make up which chunk_type is a data-only recipe
 (CHUNK_FIELDS in config/config.py), not code - this step reads each
@@ -195,7 +195,7 @@ def build_chunks(record):
                 "record_id": record["name"],
                 "chunk_type": chunk_type,
                 "part": part,
-                "text": piece,
+                "embedded_text": piece,
                 "return_text": return_text,
             })
     return chunks
